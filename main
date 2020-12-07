@@ -1,0 +1,274 @@
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.dates as mdates
+from matplotlib import pyplot as plt
+import csv
+from matplotlib import axis as ax
+import seaborn as sns
+import math
+import webbrowser
+################## S T Y L E S ######################
+
+
+sns.set(style="whitegrid")
+
+
+######################## C O V I D - 1 9  D A T A  ###########################
+
+
+full_data = pd.read_csv(
+    'https://covid.ourworldindata.org/data/owid-covid-data.csv')
+
+full_data["new_cases"].fillna(0, inplace=True)
+full_data["new_cases"].fillna(0, inplace=True)
+full_data["new_deaths"].fillna(0, inplace=True)
+full_data["total_deaths"].fillna(0, inplace=True)
+full_data["new_tests"].fillna(0, inplace=True)
+full_data["new_tests_smoothed"].fillna(0, inplace=True)
+full_data["weekly_hosp_admissions_per_million"].fillna(0, inplace=True)
+full_data["weekly_icu_admissions_per_million"].fillna(0, inplace=True)
+# full_data["new_tests_smoothed"].fillna(0, inplace=True)
+
+print(full_data.columns)
+population_df = full_data[['location']].drop_duplicates()
+print(*population_df.values.tolist(), sep='\n')
+
+
+######################### Select country #######################################################
+
+
+Select = 'France'
+
+######################## S E L E C T  T I M E #######################
+Zeitraum = 300
+Ticks = 5
+
+#################################################################################################
+
+
+location = full_data['location']
+c = full_data[location == Select]
+c_date = c['date']
+
+c_nc = c['new_cases']
+c_ncs = c['new_cases_smoothed']
+c_ncspm = c['new_cases_smoothed_per_million']
+c_ncpm = c['new_cases_per_million']
+
+c_nd = c['new_deaths']
+c_nds = c['new_deaths_smoothed']
+c_ndpm = c['new_deaths_per_million']
+c_ndspm = c['new_deaths_smoothed_per_million']
+c_tdpm = c['total_deaths_per_million']
+
+c_nt = c['new_tests']
+c_nts = c['new_tests_smoothed']
+
+c_ntpt = c['new_tests_per_thousand']
+c_ntspt = c['new_tests_smoothed_per_thousand']
+
+c_pr = c['positive_rate']
+c_tpc = c['tests_per_case']
+c_si = c['stringency_index']
+
+# updated data ca. 11/2020
+c_rr = c['reproduction_rate']
+c_icuppm = c['icu_patients_per_million']
+c_hppm = c['hosp_patients_per_million']
+c_wicuapm = c['weekly_icu_admissions_per_million']
+c_whapm = c['weekly_hosp_admissions_per_million']
+
+#print(Select, 'weekly_icu_admissions_per_million')
+#print(*c_whapm.values.tolist(), sep ='\n')
+
+print(Select, 'hosp_patients_per_million')
+print(*c_hppm.values.tolist(), sep='\n')
+############## Country data #############
+Country_data_x_vals = []
+Country_data_y_vals = []
+
+c_p_value = c.iloc[1]['population']
+Country_data_x_vals.append('population in Million')
+Country_data_y_vals.append(round(c_p_value / 1000000, 2))
+print(Select, 'population in Million:', c_p_value / 1000000)
+
+c_hbpt = c['hospital_beds_per_thousand']
+c_hbpt_value = c.iloc[0]['hospital_beds_per_thousand']
+Country_data_x_vals.append('hospital_beds_per_thousand')
+Country_data_y_vals.append(round(c_hbpt_value, 2))
+print(Select, 'hospital_beds_per_thousand:', c_hbpt_value)
+
+c_pd = c['population_density']
+c_pd_value = c.iloc[0]['population_density']
+Country_data_x_vals.append('population_density')
+Country_data_y_vals.append(round(c_pd_value, 2))
+print(Select, 'population_density:', c_pd_value)
+
+c_le = c['life_expectancy']
+c_le_value = c.iloc[0]['life_expectancy']
+Country_data_x_vals.append('life_expectancy')
+Country_data_y_vals.append(round(c_le_value, 2))
+print(Select, 'life_expectancy:', c_le_value)
+
+c_ma = c['median_age']
+c_ma_value = c.iloc[0]['median_age']
+Country_data_x_vals.append('median_age')
+Country_data_y_vals.append(round(c_ma_value, 2))
+print(Select, 'median_age:', c_ma_value)
+
+c_a65o = c['aged_65_older']
+c_a65o_value = c.iloc[0]['aged_65_older']
+Country_data_x_vals.append('aged_65_older')
+Country_data_y_vals.append(round(c_a65o_value, 2))
+print(Select, 'aged_65_older:', c_a65o_value)
+
+c_a70o = c['aged_70_older']
+c_a70o_older = c.iloc[0]['aged_70_older']
+Country_data_x_vals.append('aged_70_older')
+Country_data_y_vals.append(round(c_a70o_older, 2))
+print(Select, 'aged_70_older:', c_a70o_older)
+
+c_gdppc = c['gdp_per_capita']
+c_gdppc_value = c.iloc[0]['gdp_per_capita']
+Country_data_x_vals.append('gdp_per_capita (T€)')
+Country_data_y_vals.append(round(c_gdppc_value / 1000, 2))
+print(Select, 'gdp_per_capita (T€):', c_gdppc_value / 1000)
+
+c_tdpm_value = c.iloc[-1]['total_deaths_per_million']
+Country_data_x_vals.append('total_deaths_per_million')
+Country_data_y_vals.append(round(c_tdpm_value, 0))
+print(Select, 'total_deaths_per_million:', c_tdpm_value)
+Country_data_y_vals = np.array(Country_data_y_vals)
+
+print(Country_data_x_vals)
+print(Country_data_y_vals)
+
+######################### S O M E   M A T H ...?  ###############################
+
+today = len(c_date)
+
+
+#####################   P L O T   #######################################################################
+
+
+fig, ax = plt.subplots(2, 2)
+
+
+#############################################
+
+# links oben: diverse Daten des Landes
+
+
+def autolabel(rects):
+  """Attach a text label above each bar in *rects*, displaying its height."""
+  for rect in rects:
+    height = rect.get_height()
+    ax[0, 0].annotate('{}'.format(height),
+                      xy=(rect.get_x() + rect.get_width() / 2, height),
+                      xytext=(0, 3),  # 3 points vertical offset
+                      textcoords="offset points",
+                      ha='center', va='bottom',  fontsize=12, color='black')
+
+
+C_information = ax[0, 0].bar(Country_data_x_vals, Country_data_y_vals,
+                             color=['olivedrab', 'yellowgreen', 'sienna', 'dodgerblue', 'slategrey', 'navajowhite', 'darkorange', 'midnightblue', 'red'])
+xlabels = Country_data_x_vals
+autolabel(C_information)
+ax[0, 0].set_xticklabels(xlabels, rotation=45, ha='right')
+
+ax[0, 0].set_title(Select)
+# ax[0, 0].legend()
+
+
+#########################  links unten: tests, tests per 1000 pop  ######################################################
+ax[1, 0].plot(c_date, c_nt, color='darksalmon', alpha=0.5, label='new_tests')
+
+ax[1, 0].plot(c_date, c_nts, color='red', label='new_tests_smoothed')
+ax2 = ax[1, 0].twinx()
+ax2.plot(c_date, c_ntspt, color='navy', alpha=1,
+         label='new_tests_smoothed_per_thousand')
+
+ax[1, 0].set_xlim(today - Zeitraum, today)
+start, end = ax[1, 0].get_xlim()
+ax[1, 0].set_xticks(np.arange(start, end, Zeitraum / Ticks))
+
+ax[1, 0].set_ylim()
+ax[1, 0].set_ylabel('new_tests_smoothed')
+ax2.set_ylabel('new_tests_per_thousand')
+
+ax[1, 0].grid(False)
+ax[1, 0].set_yscale('linear')
+
+ax[1, 0].set_title(Select)
+ax[1, 0].legend(loc=0)
+ax2.legend(loc=3)
+
+
+############## rechts oben: new cases normiert, new deaths normiert ##############
+
+ax[0, 1].plot(c_date, c_ndpm, color='darksalmon',
+              alpha=0.5, label='new_deaths_per_million')
+ax[0, 1].plot(c_date, c_ndspm, color='red', alpha=1,
+              label='new_deaths_smoothed_per_million')
+
+ax[0, 1].plot(c_date, c_hppm, color='black',
+              label='hosp_patients_per_million')
+ax[0, 1].plot(c_date, c_whapm, color='grey',
+              label='weekly_hosp_admissions_per_million')
+
+ax2 = ax[0, 1].twinx()
+
+ax2.plot(c_date, c_ncpm, color='royalblue',
+         alpha=0.5, label='new_cases_per_million')
+ax2.plot(c_date, c_ncspm, color='navy', label='new_cases_smoothed_per_million')
+
+
+ax[0, 1].set_xlim(today - Zeitraum, today)
+start, end = ax[0, 1].get_xlim()
+ax[0, 1].set_xticks(np.arange(start, end, Zeitraum / Ticks))
+
+ax[0, 1].set_ylim(0, 20)
+ax[0, 1].set_ylabel('new_deaths_per_million')
+ax2.set_ylabel('new_cases_per_million')
+
+
+ax[0, 1].grid(False)
+ax[0, 1].set_yscale('linear')
+
+ax[0, 1].set_title(Select)
+ax[0, 1].legend()
+
+ax2.legend(loc=3)
+
+
+##### rechts unten: posivite rate, Stringeny index #####
+
+ax[1, 1].plot(c_date, c_pr * 100, color='red', label='positive_rate')
+
+ax[1, 1].plot(c_date, c_rr, label='reproduction_rate')
+ax2 = ax[1, 1].twinx()
+ax2.plot(c_date, c_si, color='navy', label='stringency_index')
+
+
+ax[1, 1].set_xlim(today - Zeitraum, today)
+start, end = ax[1, 1].get_xlim()
+ax[1, 1].set_xticks(np.arange(start, end, Zeitraum / Ticks))
+
+ax[1, 1].set_ylim()
+ax[1, 1].set_ylabel('positive_rate [%]')
+ax2.set_ylabel('stringency_index')
+
+ax[1, 1].grid(False)
+ax[1, 1].set_yscale('linear')
+
+ax[1, 1].set_title(Select)
+ax[1, 1].legend(loc=3)
+ax2.legend(loc=0)
+
+
+#########################################################################
+
+plt.tight_layout()
+
+plt.show()
