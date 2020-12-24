@@ -1,0 +1,169 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Dec 19 08:14:52 2020
+
+@author: Dominik Streibl
+"""
+import os
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.dates as mdates
+from matplotlib import pyplot as plt
+import csv
+from matplotlib import axis as ax
+import seaborn as sns
+import math
+import webbrowser
+import datetime
+######################## C O V I D - 1 9  D A T A  ###########################
+
+
+df = pd.read_csv(
+    'https://covid.ourworldindata.org/data/owid-covid-data.csv')
+
+##
+for i in df.columns:
+   df[i].fillna(0, inplace = True)
+last_values = df.drop_duplicates(keep ='last',subset = 'location')
+
+## stringency zuerst mittelwert am vollen Datensatz, dann eine Liste bauen
+
+# filters
+
+df = last_values.sort_values('median_age')
+filt_World = df['location']== 'World'
+df.drop(index = df[filt_World].index, inplace = True)
+
+filt_median_age = df['median_age']==0
+df.drop(index = df[filt_median_age].index, inplace = True)
+
+filt_life_expectancy =df['life_expectancy']==0
+df.drop(index = df[filt_life_expectancy].index, inplace = True)
+
+filt_population = df['population']==0
+df.drop(index = df[filt_population].index, inplace = True)
+
+#filt_continent = (df['continent']!='Europe' )& (df['continent']!='North America')
+
+filt_continent = df['continent']!='Asia'
+df.drop(index = df[filt_continent].index, inplace = True)
+
+
+# setting plot variables
+ 
+x_axis_data = df['median_age']
+y_axis_data =df['total_deaths_per_million']
+bubble_size_data =df['population']
+coloring_data = df['continent']
+
+# plot
+
+plt.figure(figsize=(10,6))
+
+user_defined_pallete = {'North America':'red', 'South America':'orange','Europe':'green',
+                        'Asia':'blue', 'Australia':'yellow', 'Africa': 'black', 'Oceania':'brown'}
+
+
+sns.scatterplot(data='location', x=x_axis_data, y=y_axis_data,
+                size =bubble_size_data, sizes = (10,1600), alpha =0.8,
+                hue =coloring_data,palette=user_defined_pallete)
+
+## keine gewichtung der daten möglich?
+#sns.regplot(x = df["median_age"], 
+#            y = df['total_deaths_per_million'],  
+#            ci = None, 
+#            data = df['population'])
+
+
+#gewichtung
+
+def weighted_sum(data, weight):
+    weighted_xbar=sum(x * y for x, y in zip(data, weight)) / sum(weight)
+    return(weighted_xbar)
+
+weighted_xbar = weighted_sum(x_axis_data,bubble_size_data)
+weighted_ybar = weighted_sum(y_axis_data,bubble_size_data)
+
+
+#weighted_xbar = weighted_sum(df['x'], df['w'])
+#linear regression    #https://de.wikipedia.org/wiki/Lineare_Einfachregression 
+#x_av ist gewichteter Mittelwert, beta_1 und beta_0 ergeben Parameter für Regressionsgerade y = beta_0 + beta_1*x 
+#output is a pd series object column that will fit  to corresponding scatterplot data data_x und data_y
+#series object einfügen z.B. über df = df.assign(name = output_column.values)
+#plot z.B. einfügen als sns.lineplot(data=None, x=x_axis_data, y=df['output_linear_weighted_regression'])
+
+
+
+
+def linear_weighted_regression(x_av, y_av, data_x, data_y):    
+    beta_1 = sum((x-x_av)*(y-y_av) for x, y in zip(data_x, data_y))/sum((x-x_av)**2 for x in data_x)
+    beta_0 = y_av - beta_1*x_av
+    output_list =[]
+    for x in data_x:
+        output_value = beta_0+beta_1*x
+        output_list.append(output_value)
+    outpout_series = pd.Series(output_list)
+    return(outpout_series)
+
+
+
+
+outpout_series = linear_weighted_regression(weighted_xbar, weighted_ybar,x_axis_data, y_axis_data)
+df = df.assign(output_linear_weighted_regression=outpout_series.values)
+
+
+#sns.scatterplot(x_axis_data, df_lin_regression['output_linear_weighted_regression'])
+sns.lineplot(data=None, x=x_axis_data, y=df['output_linear_weighted_regression'])
+
+# every point gets the country's name tagged
+
+def label_point(x_data, y_data, val, ax):
+    a = pd.concat({'x': x_data, 'y': y_data, 'val': val}, axis=1)
+    for i, point in a.iterrows():
+        ax.text(point['x']+.02, point['y'], str(point['val']))
+
+label_point(x_axis_data, y_axis_data, df['location'], plt.gca())
+
+
+
+plt.legend(bbox_to_anchor=(1.01, 1),borderaxespad=0)
+plt.title(df['date'].iloc[-1])
+plt.tight_layout()
+
+
+# output file
+
+
+
+script_dir = os.path.dirname(__file__)
+results_dir = os.path.join(script_dir, 'Scatterplots/')
+#filename_png = "sample"
+filename_png = df['date'].iloc[-1]+ ' x_ '+ x_axis_data.name+ ' y_ '+ y_axis_data.name+ ' b_ '+bubble_size_data.name
+
+
+if not os.path.isdir(results_dir):
+    os.makedirs(results_dir)
+
+
+plt.savefig(results_dir + filename_png)
+
+
+plt.show()
+print(df.columns)
+
+#population_df = df['location'].drop_duplicates('last')
+#print(*population_df.values.tolist(), sep='\n')
+
+
+
+#df[['date', 'location', 'total_deaths_per_million']]
+
+#def get_lastest_values(dataframe, col1):
+#    df =dataframe[['date','location', col1]] 
+#    countries = df['location'].drop_duplicates()
+#    for i in countries:
+#        countries.values.tolist()
+#    return print(df)
+
+#get_lastest_values(df, 'total_deaths_per_million' )
